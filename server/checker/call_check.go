@@ -58,7 +58,7 @@ func checkSignReq(param *messages.XSYSignCommonReq) error {
 
 	random := param.GetRandom()
 	if random == 0 {
-		return fmt.Errorf("random cannot be 0")
+		return fmt.Errorf("random [%d] cannot be 0", random)
 	}
 
 	findExist := SignCommonReq{}
@@ -66,7 +66,7 @@ func checkSignReq(param *messages.XSYSignCommonReq) error {
 		Random: random,
 	}).First(&findExist).Error
 	if findErr == nil {
-		return fmt.Errorf("random already exist")
+		return fmt.Errorf("random [%d] already exist", random)
 	}
 
 	if findErr != gorm.ErrRecordNotFound {

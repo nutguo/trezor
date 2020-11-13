@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/trezor/trezord-go/core"
 	"github.com/trezor/trezord-go/memorywriter"
@@ -234,6 +235,28 @@ func (a *api) call(w http.ResponseWriter, r *http.Request, mode core.CallMode, d
 	}
 }
 
+var regsArr []*regexp.Regexp
+
+func init()  {
+	regsArr = make([]*regexp.Regexp, 0)
+}
+func InitCors(domains string, disableCors bool) {
+	if disableCors {
+		regsArr = nil
+		return
+	}
+
+	domains = strings.TrimSpace(domains)
+	if domains == "" {
+		return
+	}
+
+	dList := strings.Split(domains, ",")
+	for _, item := range dList {
+		reg := regexp.MustCompile(`^` + item +`$`)
+		regsArr = append(regsArr, reg)
+	}
+}
 func corsValidator() OriginValidator {
 	// *.trezor.io
 	trezorRegex := regexp.MustCompile(`^https://([[:alnum:]\-_]+\.)*trezor\.io$`)
@@ -247,23 +270,39 @@ func corsValidator() OriginValidator {
 	// SatoshiLabs development servers
 	develRegex := regexp.MustCompile(`^https://([[:alnum:]\-_]+\.)*sldev\.cz$`)
 
+	if regsArr != nil {
+		regsArr = append(regsArr, trezorRegex)
+		regsArr = append(regsArr, trezorOnionRegex)
+		regsArr = append(regsArr, localRegex)
+		regsArr = append(regsArr, develRegex)
+	}
+
 	v := func(origin string) bool {
-		// TODO 不检测
-		return true
-		if trezorRegex.MatchString(origin) {
+
+		//if trezorRegex.MatchString(origin) {
+		//	return true
+		//}
+		//
+		//if trezorOnionRegex.MatchString(origin) {
+		//	return true
+		//}
+		//
+		//if localRegex.MatchString(origin) {
+		//	return true
+		//}
+		//
+		//if develRegex.MatchString(origin) {
+		//	return true
+		//}
+
+		if len(regsArr) == 0 {
 			return true
 		}
 
-		if trezorOnionRegex.MatchString(origin) {
-			return true
-		}
-
-		if localRegex.MatchString(origin) {
-			return true
-		}
-
-		if develRegex.MatchString(origin) {
-			return true
+		for _,item := range regsArr {
+			if item.MatchString(origin) {
+				return true
+			}
 		}
 
 		return false

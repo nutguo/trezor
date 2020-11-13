@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/trezor/trezord-go/server/api"
 	"github.com/trezor/trezord-go/server/checker"
 	"io"
 	"log"
@@ -97,6 +98,8 @@ func initUsb(init bool, wr *memorywriter.MemoryWriter, sl *log.Logger) []core.US
 }
 
 func main() {
+	var nocors bool
+	var domains string
 	var dbpath string
 	var logfile string
 	var ports udpPorts
@@ -106,6 +109,18 @@ func main() {
 	var reset bool
 	var versionFlag bool
 
+	flag.BoolVar(
+		&nocors,
+		"nocors",
+		false,
+		"Disable Cors check.",
+	)
+	flag.StringVar(
+		&domains,
+		"domains",
+		"",
+		"Domains. Cors allow domains, split by ',' ",
+	)
 	flag.StringVar(
 		&dbpath,
 		"db",
@@ -204,16 +219,9 @@ func main() {
 		stderrLogger.Fatalf("No transports enabled")
 	}
 
-	b := usb.Init(bus...)
-	defer b.Close()
-	longMemoryWriter.Log("Creating core")
-	c := core.New(b, longMemoryWriter, allowCancel(), reset)
-	longMemoryWriter.Log("Creating HTTP server")
-	s, err := server.New(c, stderrWriter, shortMemoryWriter, longMemoryWriter, version)
 
-	if err != nil {
-		stderrLogger.Fatalf("https: %s", err)
-	}
+	// cors domain
+	api.InitCors(domains, nocors)
 
 	// 当前程序所在目录下，建立数据库文件
 	tmpDbPath := dbpath
@@ -227,6 +235,17 @@ func main() {
 	}
 	longMemoryWriter.Log("Creating sqlite3")
 	checker.Init(tmpDbPath, stderrLogger)
+
+	b := usb.Init(bus...)
+	defer b.Close()
+	longMemoryWriter.Log("Creating core")
+	c := core.New(b, longMemoryWriter, allowCancel(), reset)
+	longMemoryWriter.Log("Creating HTTP server")
+	s, err := server.New(c, stderrWriter, shortMemoryWriter, longMemoryWriter, version)
+
+	if err != nil {
+		stderrLogger.Fatalf("https: %s", err)
+	}
 
 	longMemoryWriter.Log("Running HTTP server")
 	err = s.Run()

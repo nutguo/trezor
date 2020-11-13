@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/hex"
 	"encoding/json"
+	"github.com/trezor/trezord-go/server/checker"
 	"io/ioutil"
 	"net/http"
 	"regexp"
@@ -202,6 +203,14 @@ func (a *api) call(w http.ResponseWriter, r *http.Request, mode core.CallMode, d
 			a.respondError(w, err)
 			return
 		}
+
+		// 重放攻击check
+		errCheck := checker.CheckCall(string(hexbody))
+		if errCheck != nil {
+			a.respondError(w, errCheck)
+			return
+		}
+
 		binbody, err = hex.DecodeString(string(hexbody))
 		if err != nil {
 			a.respondError(w, err)
@@ -239,6 +248,8 @@ func corsValidator() OriginValidator {
 	develRegex := regexp.MustCompile(`^https://([[:alnum:]\-_]+\.)*sldev\.cz$`)
 
 	v := func(origin string) bool {
+		// TODO 不检测
+		return true
 		if trezorRegex.MatchString(origin) {
 			return true
 		}

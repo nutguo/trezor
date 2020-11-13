@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/trezor/trezord-go/server/checker"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -95,6 +97,7 @@ func initUsb(init bool, wr *memorywriter.MemoryWriter, sl *log.Logger) []core.US
 }
 
 func main() {
+	var dbpath string
 	var logfile string
 	var ports udpPorts
 	var touples udpTouples
@@ -103,6 +106,12 @@ func main() {
 	var reset bool
 	var versionFlag bool
 
+	flag.StringVar(
+		&dbpath,
+		"db",
+		"",
+		"Db path. Default, use 'trezord.db' in current directory",
+	)
 	flag.StringVar(
 		&logfile,
 		"l",
@@ -205,6 +214,19 @@ func main() {
 	if err != nil {
 		stderrLogger.Fatalf("https: %s", err)
 	}
+
+	// 当前程序所在目录下，建立数据库文件
+	tmpDbPath := dbpath
+	if tmpDbPath == "" {
+		currentDir, errDir := filepath.Abs(filepath.Dir(os.Args[0]))
+		if errDir != nil {
+			stderrLogger.Fatalf("filepath.Abs: %s", errDir)
+		}
+		currentDir = strings.Replace(currentDir, "\\", "/", -1)
+		tmpDbPath = filepath.Join(currentDir, "trezord.db", )
+	}
+	longMemoryWriter.Log("Creating sqlite3")
+	checker.Init(tmpDbPath, stderrLogger)
 
 	longMemoryWriter.Log("Running HTTP server")
 	err = s.Run()

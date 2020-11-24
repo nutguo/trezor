@@ -34,7 +34,7 @@ func New(
 	longWriter.Log("starting")
 
 	https := &http.Server{
-		Addr: "127.0.0.1:21325",
+		Addr: "0.0.0.0:21325",
 	}
 
 	allWriter := io.MultiWriter(stderrWriter, shortWriter, longWriter)

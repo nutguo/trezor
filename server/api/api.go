@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/trezor/trezord-go/server/checker"
 	"io/ioutil"
 	"net/http"
@@ -205,6 +206,9 @@ func (a *api) call(w http.ResponseWriter, r *http.Request, mode core.CallMode, d
 			return
 		}
 
+		fmt.Println("[IN]")
+		fmt.Println(string(hexbody))
+
 		// 重放攻击check
 		errCheck := checker.CheckCall(string(hexbody))
 		if errCheck != nil {
@@ -232,7 +236,12 @@ func (a *api) call(w http.ResponseWriter, r *http.Request, mode core.CallMode, d
 		if err != nil {
 			a.respondError(w, err)
 		}
+
+		fmt.Println("[OUT]")
+		fmt.Println(hexres)
 	}
+
+	fmt.Println()
 }
 
 var regsArr []*regexp.Regexp

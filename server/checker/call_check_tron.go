@@ -87,6 +87,10 @@ func checkTronSignReq(msg messages.XSYTronSignTxReq) error {
 		tronSignReq.Symbol != param.GetSymbol() {
 		return fmt.Errorf("replay, random [%d]", random)
 	}
+	// 10分钟内，重发相同random的，认为可能有问题（链上不一定有数据）
+	if time.Now().Unix() -  tronSignReq.CreateTime < 600 {
+		return fmt.Errorf("replay, internal time too short, random [%d]", random)
+	}
 
 	// 通过查询to地址,从 tronSignReq.CreateTime 之后的历史交易，有相同金额的转账，认为是重放
 	var isReplay bool
@@ -125,7 +129,6 @@ func IsReplayTrc20(toAddress, amount string, createTime int64) (bool, error) {
 
 	nextLink := fmt.Sprintf(`https://api.trongrid.io/v1/accounts/%v/transactions/trc20?%v`, toAddress, q1.Encode())
 
-	trc20Result := Trc20Result{}
 	for {
 
 		httpResponse, err := http.Get(nextLink)
@@ -139,6 +142,7 @@ func IsReplayTrc20(toAddress, amount string, createTime int64) (bool, error) {
 			return false, err
 		}
 
+		var trc20Result Trc20Result
 		err = json.Unmarshal(respBytes, &trc20Result)
 		if err != nil {
 			return false, err
@@ -192,8 +196,6 @@ func IsReplayTrx(toAddress, amount string, createTime int64) (bool, error) {
 
 	nextLink := fmt.Sprintf(`https://api.trongrid.io/v1/accounts/%v/transactions?%v`, toAddress, q1.Encode())
 
-	trx0Result := TrxResult{}
-
 	for {
 
 		httpResponse, err := http.Get(nextLink)
@@ -207,15 +209,16 @@ func IsReplayTrx(toAddress, amount string, createTime int64) (bool, error) {
 			return false, err
 		}
 
-		err = json.Unmarshal(respBytes, &trx0Result)
+		var trxResult TrxResult
+		err = json.Unmarshal(respBytes, &trxResult)
 		if err != nil {
 			return false, err
 		}
 
-		if !trx0Result.Success {
+		if !trxResult.Success {
 			return false, errors.New("获取交易记录失败")
 		}
-		for _, v := range trx0Result.Data {
+		for _, v := range trxResult.Data {
 
 			if len(v.RawData.Contract) < 1 {
 				continue
@@ -230,14 +233,14 @@ func IsReplayTrx(toAddress, amount string, createTime int64) (bool, error) {
 			}
 		}
 
-		if trx0Result.Meta.Fingerprint == "" {
+		if trxResult.Meta.Fingerprint == "" {
 			break
 		}
-		if trx0Result.Meta.Links.Next == "" {
+		if trxResult.Meta.Links.Next == "" {
 			break
 		}
 
-		nextLink = trx0Result.Meta.Links.Next
+		nextLink = trxResult.Meta.Links.Next
 
 	}
 

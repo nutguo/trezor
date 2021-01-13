@@ -96,12 +96,13 @@ func checkSignReq(param *messages.XSYSignCommonReq, data *messages.EthereumSignT
 	if findErr != nil {
 		return fmt.Errorf(findErr.Error())
 	}
-
-	// nonce, fromAddree, toAddress, Symbol 四个值未变，不认为是重放,
+	// 利用同一个地址，一个nonce只能用一次的这个特性
+	// nonce, fromAddress, toAddress, Symbol 四个值未变，不认为是重放,
 	if findExist.Nonce == uint32(nonce) &&
 		findExist.FromAddress == fromAddress &&
 		findExist.To == param.GetTo() &&
-		findExist.Symbol == param.GetSymbol() {
+		findExist.Symbol == param.GetSymbol() &&
+		findExist.Amount == param.GetAmount() {
 		return nil
 	}
 

@@ -8,7 +8,8 @@ import (
 )
 
 func init() {
-	Init(`D:\trezor\trezord-go\trezord.db`, &log.Logger{})
+	//Init(`D:\trezor\trezord-go\trezord.db`, &log.Logger{})
+	Init(`/tmp/trezord.db`, &log.Logger{})
 }
 
 func newXSYEthereumSignTx() *messages.XSYEthereumSignTx {
@@ -19,24 +20,24 @@ func newXSYEthereumSignTx() *messages.XSYEthereumSignTx {
 
 	msgXSYEthereumSignTx := messages.XSYEthereumSignTx{}
 	msgXSYEthereumSignTx.SignRsp = &messages.XSYSignCommonRsp{
-		Address: &tmpSting,
+		Address:   &tmpSting,
 		Signature: tmpByteArr,
 	}
 	msgXSYEthereumSignTx.SignReq = &messages.XSYSignCommonReq{
 		Symbol: &tmpSting,
 		Amount: &tmpSting,
-		To: &tmpSting,
+		To:     &tmpSting,
 		Random: &tmpUint32,
 	}
 	msgXSYEthereumSignTx.Data = &messages.EthereumSignTx{
-		AddressN: tmpUint32Arr,
-		Nonce: tmpByteArr,
-		GasPrice: tmpByteArr,
-		GasLimit: tmpByteArr,
-		To: &tmpSting,
-		Value: tmpByteArr,
+		AddressN:         tmpUint32Arr,
+		Nonce:            tmpByteArr,
+		GasPrice:         tmpByteArr,
+		GasLimit:         tmpByteArr,
+		To:               &tmpSting,
+		Value:            tmpByteArr,
 		DataInitialChunk: tmpByteArr,
-		DataLength: &tmpUint32,
+		DataLength:       &tmpUint32,
 	}
 
 	return &msgXSYEthereumSignTx
@@ -51,7 +52,7 @@ func Test_001(t *testing.T) {
 	msgXSYEthereumSignTx.SignReq = &messages.XSYSignCommonReq{
 		Symbol: &tmpSymbol,
 		Amount: &tmpAmount,
-		To: &tmpTo,
+		To:     &tmpTo,
 		Random: &tmpRandom,
 	}
 
@@ -63,5 +64,32 @@ func Test_001(t *testing.T) {
 	errCheck := CheckCall(callStr)
 	if errCheck != nil {
 		log.Fatal("errCheck", errCheck)
+	}
+}
+
+func TestTronReplay(t *testing.T) {
+	tmpSymbol := "trx"
+	tmpAmount := "2"
+	tmpTo := "TGWmXKaMPV8LRQKr8hWsjRPdEizSfPJz7y"
+	tmpRandom := uint32(123412)
+
+	msgXSYTronSignTxReq := messages.XSYTronSignTxReq{
+		AddressFrom: []uint32{44 | 0x80000000, 1 | 0x80000000, 0 | 0x80000000, 0, 1},
+	}
+	msgXSYTronSignTxReq.SignReq = &messages.XSYSignCommonReq{
+		Symbol: &tmpSymbol,
+		Amount: &tmpAmount,
+		To:     &tmpTo,
+		Random: &tmpRandom,
+	}
+
+	callStr, errEncode := xsy_proto.EncodeCallData(messages.MessageType_MessageType_XSYTronSignTxReq, &msgXSYTronSignTxReq)
+	if errEncode != nil {
+		log.Fatal("errEncode", errEncode)
+	}
+
+	errCheck := CheckCall(callStr)
+	if errCheck != nil {
+		log.Fatal("errCheck:", errCheck)
 	}
 }

@@ -20,7 +20,7 @@ func Init(path string, sl *log.Logger) {
 	privDb.sl = sl
 
 	// 自动创建表
-	getDb().AutoMigrate(&SignCommonReq{})
+	getDb().AutoMigrate(&SignCommonReq{}, new(TronSignReq))
 }
 
 func getDb() *gorm.DB{

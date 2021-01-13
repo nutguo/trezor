@@ -5,12 +5,20 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/trezor/trezord-go/server/checker/xsy_proto"
 	"github.com/trezor/trezord-go/server/checker/xsy_proto/messages"
+	"math/big"
+	"strconv"
 )
 
 func CheckCall(hexBody string) (retErr error) {
 
 	// 以太坊链
 	retErr = check_XSYEthereumSignTx(hexBody)
+	if retErr != nil {
+		return retErr
+	}
+
+	// 波场
+	retErr = checkTronSignTx(hexBody)
 	if retErr != nil {
 		return retErr
 	}
@@ -48,10 +56,10 @@ func check_XSYEthereumSignTx(hexBody string) error {
 		return nil
 	}
 
-	return checkSignReq(msgSignReq)
+	return checkSignReq(msgSignReq, msgXSYEthereumSignTx.GetData())
 }
 
-func checkSignReq(param *messages.XSYSignCommonReq) error {
+func checkSignReq(param *messages.XSYSignCommonReq, data *messages.EthereumSignTx) error {
 	if param == nil {
 		return nil
 	}
@@ -65,23 +73,46 @@ func checkSignReq(param *messages.XSYSignCommonReq) error {
 	findErr := getDb().Where(&SignCommonReq{
 		Random: random,
 	}).First(&findExist).Error
-	if findErr == nil {
-		return fmt.Errorf("random [%d] already exist", random)
+
+	var nonce = new(big.Int).SetBytes(data.Nonce).Uint64()
+	fromAddress := addressN2str(data.GetAddressN())
+
+	if findErr != nil && findErr == gorm.ErrRecordNotFound {
+		newData := SignCommonReq{
+			Symbol:      param.GetSymbol(),
+			To:          param.GetTo(),
+			Amount:      param.GetAmount(),
+			Random:      param.GetRandom(),
+			FromAddress: fromAddress,
+			Nonce:       uint32(nonce),
+		}
+		newErr := getDb().Create(&newData).Error
+		if newErr != nil {
+			return fmt.Errorf(newErr.Error())
+		}
+		return nil
 	}
 
-	if findErr != gorm.ErrRecordNotFound {
+	if findErr != nil {
 		return fmt.Errorf(findErr.Error())
 	}
 
-	newData := SignCommonReq{
-		Symbol: param.GetSymbol(),
-		To:     param.GetTo(),
-		Amount: param.GetAmount(),
-		Random: param.GetRandom(),
+	// nonce, fromAddree, toAddress, Symbol 四个值未变，不认为是重放,
+	if findExist.Nonce == uint32(nonce) &&
+		findExist.FromAddress == fromAddress &&
+		findExist.To == param.GetTo() &&
+		findExist.Symbol == param.GetSymbol() {
+		return nil
 	}
-	newErr := getDb().Create(&newData).Error
-	if newErr != nil {
-		return fmt.Errorf(newErr.Error())
+
+	return fmt.Errorf("random [%d] already exist", random)
+}
+
+func addressN2str(addressN []uint32) string {
+	add := ""
+	for _, v := range addressN {
+		add = add + strconv.Itoa(int(v)) + "/"
 	}
-	return nil
+
+	return add
 }

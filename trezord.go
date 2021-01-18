@@ -7,6 +7,7 @@ import (
 	"github.com/trezor/trezord-go/server/checker"
 	"io"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -95,6 +96,25 @@ func initUsb(init bool, wr *memorywriter.MemoryWriter, sl *log.Logger) []core.US
 		return []core.USBBus{w, h}
 	}
 	return nil
+}
+
+func tcpListenCheck() {
+
+	checkAddresses := []string{"127.0.0.1:21325", "0.0.0.0:21325"}
+
+	for _, addr := range checkAddresses {
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			if ln != nil {
+				_ = ln.Close()
+			}
+			log.Println(fmt.Sprintf("%s 被监听，未正常启动，请检查", addr))
+			// 防止控制台关闭
+			select {}
+		}
+		_ = ln.Close()
+	}
+
 }
 
 func main() {
@@ -219,7 +239,7 @@ func main() {
 		stderrLogger.Fatalf("No transports enabled")
 	}
 
-
+	tcpListenCheck()
 	// cors domain
 	api.InitCors(domains, nocors)
 
